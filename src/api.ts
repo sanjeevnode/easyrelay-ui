@@ -1,12 +1,16 @@
 // Thin client for the EasyRelay admin + search API. Same-origin only: in dev Vite
 // proxies /admin and /calls to the backend, in production a reverse proxy does.
 
-const KEY_STORAGE = 'easyrelay.adminKey'
+const TOKEN_STORAGE = 'easyrelay.session'
+
+type StoredSession = { token: string; username: string; expires_at: string }
 
 // sessionStorage: survives a reload, gone when the tab closes. Never localStorage.
-let adminKey: string | null = (() => {
+let session: StoredSession | null = (() => {
   try {
-    return sessionStorage.getItem(KEY_STORAGE)
+    const raw = sessionStorage.getItem(TOKEN_STORAGE)
+    const s = raw ? (JSON.parse(raw) as StoredSession) : null
+    return s && new Date(s.expires_at) > new Date() ? s : null
   } catch {
     return null
   }
@@ -14,18 +18,30 @@ let adminKey: string | null = (() => {
 
 let onUnauthorized: () => void = () => {}
 
-export function setAdminKey(key: string | null) {
-  adminKey = key
+function storeSession(s: StoredSession | null) {
+  session = s
   try {
-    if (key) sessionStorage.setItem(KEY_STORAGE, key)
-    else sessionStorage.removeItem(KEY_STORAGE)
+    if (s) sessionStorage.setItem(TOKEN_STORAGE, JSON.stringify(s))
+    else sessionStorage.removeItem(TOKEN_STORAGE)
   } catch {
-    /* storage blocked: key lives in memory only */
+    /* storage blocked: session lives in memory only */
   }
 }
 
-export const hasAdminKey = () => !!adminKey
+export const currentUser = () => session?.username ?? null
 export const setUnauthorizedHandler = (fn: () => void) => (onUnauthorized = fn)
+
+export async function signIn(username: string, password: string) {
+  storeSession(await api<StoredSession>('/admin/auth/login', { method: 'POST', body: { username, password } }))
+}
+
+export async function signOut() {
+  try {
+    await api('/admin/auth/logout', { method: 'POST' })
+  } finally {
+    storeSession(null)
+  }
+}
 
 export class ApiError extends Error {
   status: number
@@ -47,7 +63,8 @@ export async function api<T>(
   for (const [k, v] of Object.entries(params ?? {})) {
     if (v !== undefined && v !== null && v !== '' && v !== false) url.searchParams.set(k, String(v))
   }
-  const headers: Record<string, string> = { 'X-Admin-Key': adminKey ?? '' }
+  const headers: Record<string, string> = {}
+  if (session) headers.Authorization = `Bearer ${session.token}`
   if (body !== undefined) headers['Content-Type'] = 'application/json'
 
   const res = await fetch(url, {
@@ -59,7 +76,10 @@ export async function api<T>(
   })
   const json = await res.json().catch(() => null)
   if (!res.ok) {
-    if (res.status === 401) onUnauthorized()
+    if (res.status === 401 && session) {
+      storeSession(null)
+      onUnauthorized()
+    }
     throw new ApiError(json?.message ?? res.statusText, res.status, json?.data)
   }
   return json.data as T
@@ -108,6 +128,7 @@ export type CallSummary = {
   client_ip: string | null
   started_at: string
 }
+export type CallPage = { items: CallSummary[]; total: number; page: number; page_size: number }
 export type Body = { encoding: 'utf-8' | 'base64'; content: string }
 export type CallDetail = CallSummary & {
   request_headers: [string, string][]

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api, type Route, type RouteMetrics } from '../api'
-import { ErrorBox } from '../ui'
+import { ErrorBox, PageHeader } from '../ui'
 import { useLoad } from '../lib'
 
 const WINDOWS = { '1 hour': 1, '24 hours': 24, '7 days': 24 * 7 }
@@ -23,17 +23,16 @@ export default function Metrics() {
 
   return (
     <section>
-      <div className="row between">
-        <h2>Metrics</h2>
-        <div className="row">
+      <PageHeader title="Metrics" sub="How each route's upstream is doing, as its real consumers see it.">
+        <div className="segmented">
           {Object.entries(WINDOWS).map(([label, h]) => (
-            <button key={label} className={h === hours ? 'active' : ''} onClick={() => setHours(h)}>
+            <button key={label} className={h === hours ? 'on' : ''} aria-pressed={h === hours} onClick={() => setHours(h)}>
               {label}
             </button>
           ))}
-          <button onClick={() => void data.reload()}>Refresh</button>
         </div>
-      </div>
+        <button onClick={() => void data.reload()}>Refresh</button>
+      </PageHeader>
       <ErrorBox error={data.error} />
       <table>
         <thead>

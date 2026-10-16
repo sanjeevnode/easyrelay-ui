@@ -12,7 +12,7 @@ npm run dev              # http://127.0.0.1:5173
 ```
 
 Start the API first (`uv run python main.py` in the `easyrelay` repo), then sign in
-with the API's `ADMIN_KEY`.
+with an admin account created there (`uv run python -m app.cli create-admin <name>`).
 
 ## How it connects
 
@@ -30,8 +30,10 @@ https://relay.example.com/relay/*   → EasyRelay API
 
 ## Security
 
-- The admin key is kept in `sessionStorage` (this tab only, cleared on close), sent
-  only as the `X-Admin-Key` header, never in URLs or cookies. A 401 signs you out.
+- Sign-in is username + password. The server returns a random session token (stored
+  hashed, expires after 12 h, revoked on sign-out). The UI keeps it in `sessionStorage`
+  (this tab only, cleared on close) and sends it only as `Authorization: Bearer`.
+  A 401 signs you out. Five wrong passwords lock the account for 15 minutes.
 - Production builds carry a strict Content-Security-Policy (`'self'` only, no inline
   scripts) and no source maps.
 - Recorded bodies and headers are rendered as text, never as HTML.

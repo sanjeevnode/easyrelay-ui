@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { api, type ApiKey, type Consumer } from '../api'
-import { Badge, ErrorBox } from '../ui'
+import { ActiveBadge, Badge, ErrorBox, PageHeader } from '../ui'
 import { fmtDate, useAction, useLoad } from '../lib'
 
 export default function Consumers() {
@@ -24,7 +24,7 @@ export default function Consumers() {
 
   return (
     <section>
-      <h2>Consumers</h2>
+      <PageHeader title="Consumers" sub="Apps and teams that send traffic through the relay. Each signs its calls with a key." />
       <form className="row" onSubmit={create}>
         <input placeholder="name (a-z, 0-9, - _)" value={name} onChange={(e) => setName(e.target.value)} required />
         <button disabled={action.busy}>Add consumer</button>
@@ -38,7 +38,7 @@ export default function Consumers() {
           {list.data?.map((c) => (
             <tr key={c.id} className={selected?.id === c.id ? 'selected' : ''}>
               <td>{c.name}</td>
-              <td><Badge ok={c.is_active}>{c.is_active ? 'active' : 'disabled'}</Badge></td>
+              <td><ActiveBadge active={c.is_active} /></td>
               <td>{fmtDate(c.created_at)}</td>
               <td className="actions">
                 <button onClick={() => setSelected(c)}>Keys</button>
@@ -113,7 +113,7 @@ function Keys({ consumer }: { consumer: Consumer }) {
               <tr key={k.id}>
                 <td><code>{k.prefix}…</code></td>
                 <td>{k.label ?? '—'}</td>
-                <td><Badge ok={ok}>{k.revoked_at ? 'revoked' : expired ? 'expired' : 'active'}</Badge></td>
+                <td><Badge tone={ok ? 'ok' : 'idle'}>{k.revoked_at ? 'Revoked' : expired ? 'Expired' : 'Active'}</Badge></td>
                 <td>{fmtDate(k.expires_at)}</td>
                 <td>{fmtDate(k.last_used_at)}</td>
                 <td className="actions">{ok && <button onClick={() => revoke(k)}>Revoke</button>}</td>

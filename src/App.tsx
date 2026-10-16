@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { api, hasAdminKey, setAdminKey, setUnauthorizedHandler } from './api'
+import { currentUser, setUnauthorizedHandler, signIn, signOut } from './api'
 import { ErrorBox } from './ui'
 import { errorText } from './lib'
 import Consumers from './pages/Consumers'
@@ -8,45 +8,64 @@ import Routes from './pages/Routes'
 import Calls from './pages/Calls'
 import Metrics from './pages/Metrics'
 
-const TABS = { calls: Calls, metrics: Metrics, routes: Routes, consumers: Consumers, upstreams: Upstreams }
-type Tab = keyof typeof TABS
+const SECTIONS = [
+  { id: 'calls', label: 'Calls', page: Calls, group: 'Traffic' },
+  { id: 'metrics', label: 'Metrics', page: Metrics, group: 'Traffic' },
+  { id: 'routes', label: 'Routes', page: Routes, group: 'Setup' },
+  { id: 'consumers', label: 'Consumers', page: Consumers, group: 'Setup' },
+  { id: 'upstreams', label: 'Upstreams', page: Upstreams, group: 'Setup' },
+] as const
+type SectionId = (typeof SECTIONS)[number]['id']
 
 export default function App() {
-  const [signedIn, setSignedIn] = useState(hasAdminKey())
-  const [tab, setTab] = useState<Tab>('calls')
+  const [user, setUser] = useState(currentUser())
+  const [section, setSection] = useState<SectionId>('calls')
 
   useEffect(() => {
-    setUnauthorizedHandler(() => {
-      setAdminKey(null)
-      setSignedIn(false)
-    })
+    setUnauthorizedHandler(() => setUser(null))
   }, [])
 
-  if (!signedIn) return <SignIn onDone={() => setSignedIn(true)} />
+  if (!user) return <SignIn onDone={() => setUser(currentUser())} />
 
-  const Page = TABS[tab]
+  const Page = SECTIONS.find((s) => s.id === section)!.page
   return (
-    <div className="app">
-      <header>
-        <strong>EasyRelay</strong>
+    <div className="shell">
+      <aside className="rail">
+        <div className="wordmark">
+          <span className="mark" aria-hidden>
+            <i />
+            <i />
+            <i />
+          </span>
+          EasyRelay
+        </div>
         <nav>
-          {(Object.keys(TABS) as Tab[]).map((t) => (
-            <button key={t} className={t === tab ? 'active' : ''} onClick={() => setTab(t)}>
-              {t}
-            </button>
+          {(['Traffic', 'Setup'] as const).map((group) => (
+            <div key={group} className="nav-group">
+              <span className="nav-label">{group}</span>
+              {SECTIONS.filter((s) => s.group === group).map((s) => (
+                <button
+                  key={s.id}
+                  className={s.id === section ? 'nav-item current' : 'nav-item'}
+                  aria-current={s.id === section ? 'page' : undefined}
+                  onClick={() => setSection(s.id)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
-        <button
-          className="link"
-          onClick={() => {
-            setAdminKey(null)
-            setSignedIn(false)
-          }}
-        >
-          Sign out
-        </button>
-      </header>
-      <main>
+        <div className="rail-foot">
+          <span className="who" title="Signed in as">
+            {user}
+          </span>
+          <button className="ghost" onClick={() => void signOut().finally(() => setUser(null))}>
+            Sign out
+          </button>
+        </div>
+      </aside>
+      <main className="content">
         <Page />
       </main>
     </div>
@@ -54,38 +73,58 @@ export default function App() {
 }
 
 function SignIn({ onDone }: { onDone: () => void }) {
-  const [key, setKey] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    setAdminKey(key.trim())
+    setBusy(true)
+    setError(null)
     try {
-      await api('/admin/consumers') // cheapest call that proves the key works
+      await signIn(username.trim(), password)
       onDone()
     } catch (err) {
-      setAdminKey(null)
       setError(errorText(err))
+      setPassword('')
+    } finally {
+      setBusy(false)
     }
   }
 
   return (
-    <form className="signin card" onSubmit={submit}>
-      <h1>EasyRelay</h1>
-      <label>
-        Admin key
-        <input
-          type="password"
-          autoComplete="off"
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          autoFocus
-          required
-        />
-      </label>
-      <button type="submit">Sign in</button>
-      <ErrorBox error={error} />
-      <p className="hint">Kept in this tab only and cleared when the tab closes.</p>
-    </form>
+    <div className="signin-page">
+      <form className="signin" onSubmit={submit}>
+        <div className="wordmark big">
+          <span className="mark" aria-hidden>
+            <i />
+            <i />
+            <i />
+          </span>
+          EasyRelay
+        </div>
+        <p className="sub">See exactly what was sent and what came back.</p>
+        <label>
+          Username
+          <input autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </label>
+        <button className="primary" disabled={busy}>
+          {busy ? 'Signing in…' : 'Sign in'}
+        </button>
+        <ErrorBox error={error} />
+        <p className="hint">Accounts are created by an operator on the server with <code>python -m app.cli create-admin</code>.</p>
+      </form>
+    </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { api, type Consumer, type LogBodies, type Route, type Upstream } from '../api'
-import { Badge, ErrorBox } from '../ui'
+import { ActiveBadge, ErrorBox, PageHeader } from '../ui'
 import { useAction, useLoad } from '../lib'
 
 type Form = {
@@ -85,7 +85,7 @@ export default function Routes() {
 
   return (
     <section>
-      <h2>Routes</h2>
+      <PageHeader title="Routes" sub="Which consumer may call which upstream, and what it may call there." />
       <form className="card grid" onSubmit={submit}>
         <h3>{editing ? `Edit ${editing.slug}` : 'New route'}</h3>
         <label>
@@ -107,7 +107,9 @@ export default function Routes() {
           </select>
         </label>
         <label className="wide">
-          Allowlist, one per line: <code>METHOD /path/*</code> (<code>*</code> = one segment or any method)
+          <span>
+            Allowlist, one rule per line: <code>METHOD /path</code>. A <code>*</code> matches one path segment, or any method.
+          </span>
           <textarea rows={4} value={form.allowlist} onChange={(e) => set('allowlist', e.target.value)} placeholder={'GET /v1/items/*\nPOST /v1/items'} />
         </label>
         <label>
@@ -131,11 +133,13 @@ export default function Routes() {
           </select>
         </label>
         <label className="wide">
-          Redact fields, one per line (<code>password</code> anywhere, <code>card.number</code> exact path)
+          <span>
+            Fields to hide in stored bodies, one per line: <code>password</code> hides it anywhere, <code>card.number</code> only at that path.
+          </span>
           <textarea rows={2} value={form.redact_fields} onChange={(e) => set('redact_fields', e.target.value)} />
         </label>
         <div className="row wide">
-          <button disabled={action.busy}>{editing ? 'Save changes' : 'Create route'}</button>
+          <button className="primary" disabled={action.busy}>{editing ? 'Save changes' : 'Create route'}</button>
           {editing && <button type="button" onClick={() => { setEditing(null); setForm(EMPTY) }}>Cancel</button>}
         </div>
       </form>
@@ -151,7 +155,7 @@ export default function Routes() {
               <td>{name(consumers, r.consumer_id)} → {name(upstreams, r.upstream_id)}</td>
               <td>{r.allowlist.length ? r.allowlist.map((a) => <div key={a}><code>{a}</code></div>) : <em>nothing allowed</em>}</td>
               <td>{r.log_bodies}</td>
-              <td><Badge ok={r.is_active}>{r.is_active ? 'active' : 'disabled'}</Badge></td>
+              <td><ActiveBadge active={r.is_active} /></td>
               <td className="actions">
                 <button onClick={() => startEdit(r)}>Edit</button>
                 <button onClick={() => toggle(r)}>{r.is_active ? 'Disable' : 'Enable'}</button>
