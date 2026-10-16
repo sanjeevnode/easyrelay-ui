@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
   const proxy = { '/admin': api, '/calls': api }
   return {
     plugins: [react(), csp],
-    server: { host: '127.0.0.1', port: 5173, strictPort: true, proxy },
+    server: { host: '127.0.0.1', port: 5273, strictPort: true, proxy },
     preview: { host: '127.0.0.1', port: 4173, strictPort: true, proxy },
     build: { sourcemap: false },
   }

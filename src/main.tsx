@@ -9,6 +9,10 @@ import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/500.css'
 import './index.css'
 import App from './App.tsx'
+import { detectDevice } from './lib'
+
+// set before first paint so the right layout renders immediately
+document.documentElement.dataset.device = detectDevice()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

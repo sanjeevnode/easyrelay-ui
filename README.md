@@ -8,7 +8,7 @@ routes, call search with request/response detail, and per-route metrics.
 ```sh
 npm install
 cp .env.example .env     # only if the API is not on http://127.0.0.1:8120
-npm run dev              # http://127.0.0.1:5173
+npm run dev              # http://127.0.0.1:5273
 ```
 
 Start the API first (`uv run python main.py` in the `easyrelay` repo), then sign in

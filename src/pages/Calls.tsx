@@ -44,6 +44,7 @@ export default function Calls() {
   const [page, setPage] = useState(1)
   const [refreshTick, setRefreshTick] = useState(0)
   const [openId, setOpenId] = useState<string | null>(null)
+  const [filtersOpen, setFiltersOpen] = useState(false) // phones only; always shown elsewhere
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -81,7 +82,8 @@ export default function Calls() {
   const pages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1
   const first = data && data.total ? (page - 1) * PAGE_SIZE + 1 : 0
   const last = data ? Math.min(page * PAGE_SIZE, data.total) : 0
-  const filtered = !!(q || routeId || consumerId || method || outcome !== 'all' || since || until)
+  const activeFilters = [q, routeId, consumerId, method, outcome !== 'all', since, until].filter(Boolean).length
+  const filtered = activeFilters > 0
   const slug = (id: string) => routes.find((r) => r.id === id)?.slug ?? '…'
   const consumerName = (id: string) => consumers.find((c) => c.id === id)?.name ?? '…'
 
@@ -99,11 +101,16 @@ export default function Calls() {
   return (
     <section>
       <PageHeader title="Calls" sub="Every request that went through the relay, newest first.">
-        <button onClick={() => setRefreshTick((t) => t + 1)} disabled={result.loading}>
-          {result.loading ? 'Loading…' : 'Refresh'}
+        <button className="filters-toggle" onClick={() => setFiltersOpen(!filtersOpen)} aria-expanded={filtersOpen}>
+          {filtersOpen ? 'Hide filters' : 'Filters'}{activeFilters ? ` (${activeFilters})` : ''}
+        </button>
+        {/* fixed label: changing text would change the width and shift the header */}
+        <button className="refresh" onClick={() => setRefreshTick((t) => t + 1)} disabled={result.loading} aria-busy={result.loading}>
+          Refresh
         </button>
       </PageHeader>
 
+      <div className={`filters ${filtersOpen ? 'open' : ''}`}>
       <div className="toolbar">
         <input
           className="search"
@@ -142,6 +149,7 @@ export default function Calls() {
         </label>
         {filtered && <button className="ghost" onClick={reset}>Clear filters</button>}
       </div>
+      </div>
 
       <ErrorBox error={lookups.error ?? result.error} />
 
@@ -177,11 +185,11 @@ export default function Calls() {
             <strong>{first}–{last}</strong> of <strong>{data.total.toLocaleString()}</strong>
           </span>
           <div className="pager-buttons">
-            <button onClick={() => setPage(1)} disabled={page === 1}>First</button>
+            <button className="pager-edge" onClick={() => setPage(1)} disabled={page === 1}>First</button>
             <button onClick={() => setPage(page - 1)} disabled={page === 1}>Previous</button>
             <span className="page-no">Page {page} of {pages}</span>
             <button onClick={() => setPage(page + 1)} disabled={page >= pages}>Next</button>
-            <button onClick={() => setPage(pages)} disabled={page >= pages}>Last</button>
+            <button className="pager-edge" onClick={() => setPage(pages)} disabled={page >= pages}>Last</button>
           </div>
         </nav>
       )}
@@ -200,21 +208,21 @@ function Row({ call, route, consumer, onOpen }: { call: CallSummary; route: stri
   const url = splitUrl(call.upstream_url)
   return (
     <tr className="clickable" onClick={onOpen} onKeyDown={(e) => e.key === 'Enter' && onOpen()} tabIndex={0}>
-      <td className="mono nowrap" title={fmtDate(call.started_at)}>{fmtClock(call.started_at)}</td>
-      <td><HopTrace trace={traceOf(call)} /></td>
-      <td className="url">
+      <td data-label="Time" className="c-time mono nowrap" title={fmtDate(call.started_at)}>{fmtClock(call.started_at)}</td>
+      <td data-label="Path" className="c-trace"><HopTrace trace={traceOf(call)} /></td>
+      <td data-label="Request URL" className="url">
         <span className={`method m-${call.method.toLowerCase()}`}>{call.method}</span>
         <span className="mono" title={call.upstream_url}>
           <span className="origin">{url.origin}</span>
           {url.rest}
         </span>
       </td>
-      <td className="nowrap">
+      <td data-label="Consumer · Route" className="c-who nowrap">
         {consumer} <span className="muted">· {route}</span>
       </td>
-      <td><Result call={call} /></td>
-      <td className="num mono">{fmtMs(call.duration_ms)}</td>
-      <td className="num mono">{fmtBytes(call.response_size)}</td>
+      <td data-label="Result" className="c-result"><Result call={call} /></td>
+      <td data-label="Duration" className="c-dur num mono">{fmtMs(call.duration_ms)}</td>
+      <td data-label="Size" className="c-size num mono">{fmtBytes(call.response_size)}</td>
     </tr>
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { currentUser, setUnauthorizedHandler, signIn, signOut } from './api'
 import { ErrorBox } from './ui'
-import { errorText } from './lib'
+import { errorText, useDevice } from './lib'
 import Consumers from './pages/Consumers'
 import Upstreams from './pages/Upstreams'
 import Routes from './pages/Routes'
@@ -20,6 +20,11 @@ type SectionId = (typeof SECTIONS)[number]['id']
 export default function App() {
   const [user, setUser] = useState(currentUser())
   const [section, setSection] = useState<SectionId>('calls')
+  const device = useDevice()
+
+  useEffect(() => {
+    document.documentElement.dataset.device = device
+  }, [device])
 
   useEffect(() => {
     setUnauthorizedHandler(() => setUser(null))

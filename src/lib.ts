@@ -159,3 +159,49 @@ export function useAction() {
   }
   return { error, busy, run }
 }
+
+export type Device = 'mobile' | 'tablet' | 'desktop'
+
+const PHONE_UA = /Android.+Mobile|iPhone|iPod|Windows Phone|BlackBerry|Opera Mini|IEMobile/i
+const TABLET_UA = /iPad|Tablet|Android(?!.*Mobile)|Silk|Kindle|PlayBook/i
+
+/**
+ * Not width alone: a phone in landscape is wide, and a desktop window can be narrow.
+ * Combines the browser's own mobile hint, the user agent, touch input and the
+ * device's physical screen, then falls back to window width so a narrow desktop
+ * window still gets a usable layout.
+ */
+export function detectDevice(): Device {
+  const nav = navigator as Navigator & { userAgentData?: { mobile?: boolean } }
+  const ua = nav.userAgent
+  const coarse = window.matchMedia('(pointer: coarse)').matches
+  const noHover = window.matchMedia('(hover: none)').matches
+  const touch = coarse || nav.maxTouchPoints > 0
+  const shortSide = Math.min(window.screen.width, window.screen.height)
+  const ipadAsMac = /Macintosh/.test(ua) && nav.maxTouchPoints > 1 // iPadOS reports a desktop UA
+
+  const phone = nav.userAgentData?.mobile === true || PHONE_UA.test(ua) || (touch && noHover && shortSide < 600)
+  if (phone || window.innerWidth < 640) return 'mobile'
+
+  const tablet = TABLET_UA.test(ua) || ipadAsMac || (touch && noHover && shortSide < 1100)
+  if (tablet || window.innerWidth < 1024) return 'tablet'
+  return 'desktop'
+}
+
+/** Current device class; re-evaluated on resize, rotation and input-device changes. */
+export function useDevice(): Device {
+  const [device, setDevice] = useState<Device>(detectDevice)
+  useEffect(() => {
+    const update = () => setDevice(detectDevice())
+    const queries = ['(pointer: coarse)', '(hover: none)'].map((q) => window.matchMedia(q))
+    window.addEventListener('resize', update)
+    window.addEventListener('orientationchange', update)
+    queries.forEach((q) => q.addEventListener('change', update))
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('orientationchange', update)
+      queries.forEach((q) => q.removeEventListener('change', update))
+    }
+  }, [])
+  return device
+}

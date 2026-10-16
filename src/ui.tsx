@@ -129,3 +129,51 @@ export function CopyButton({ text, label, showLabel }: { text: string; label: st
     </button>
   )
 }
+
+export function DrawerHeader({ eyebrow, title, onClose }: { eyebrow: string; title: ReactNode; onClose: () => void }) {
+  return (
+    <header className="drawer-head">
+      <div>
+        <span className="eyebrow">{eyebrow}</span>
+        <h2>{title}</h2>
+      </div>
+      <button type="button" className="ghost" onClick={onClose} aria-label="Close">
+        Close
+      </button>
+    </header>
+  )
+}
+
+/** Free-text values as removable chips. Enter or comma adds; Backspace on empty removes the last. */
+export function TagInput({ values, onChange, placeholder }: { values: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
+  const [draft, setDraft] = useState('')
+  const add = () => {
+    const v = draft.trim()
+    if (v && !values.includes(v)) onChange([...values, v])
+    setDraft('')
+  }
+  return (
+    <div className="tags">
+      {values.map((v) => (
+        <span key={v} className="tag">
+          {v}
+          <button type="button" aria-label={`Remove ${v}`} onClick={() => onChange(values.filter((x) => x !== v))}>
+            ×
+          </button>
+        </span>
+      ))}
+      <input
+        value={draft}
+        placeholder={values.length ? '' : placeholder}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault()
+            add()
+          } else if (e.key === 'Backspace' && !draft && values.length) onChange(values.slice(0, -1))
+        }}
+        onBlur={add}
+      />
+    </div>
+  )
+}
