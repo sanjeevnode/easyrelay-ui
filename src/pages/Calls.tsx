@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api, type Body, type CallDetail, type CallPage, type CallSummary, type Consumer, type Route } from '../api'
-import { Badge, Drawer, ErrorBox, HopTrace, PageHeader } from '../ui'
+import { Badge, CopyButton, Drawer, ErrorBox, HopTrace, PageHeader } from '../ui'
 import {
   errorLabel,
-  errorText,
+  headersToObject,
   fmtBytes,
   fmtClock,
   fmtDate,
@@ -222,18 +222,7 @@ function Row({ call, route, consumer, onOpen }: { call: CallSummary; route: stri
 function CallDrawer({ id, route, consumer, onClose }: { id: string; route: (id: string) => string; consumer: (id: string) => string; onClose: () => void }) {
   const detail = useLoad(() => api<CallDetail>(`/calls/${id}`), [id])
   const [tab, setTab] = useState<'request' | 'response'>('request')
-  const [copied, setCopied] = useState<string | null>(null)
   const c = detail.data
-
-  const copy = async (what: string, text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(what)
-      setTimeout(() => setCopied(null), 1500)
-    } catch (e) {
-      setCopied(errorText(e))
-    }
-  }
 
   return (
     <Drawer label="Call details" onClose={onClose}>
@@ -255,7 +244,7 @@ function CallDrawer({ id, route, consumer, onClose }: { id: string; route: (id: 
             <dt>Request URL</dt>
             <dd className="mono break">
               {c.upstream_url}
-              <button className="link" onClick={() => copy('url', c.upstream_url)}>{copied === 'url' ? 'Copied' : 'Copy'}</button>
+              <CopyButton text={c.upstream_url} label="Copy URL" />
             </dd>
             <dt>Route</dt>
             <dd>{route(c.route_id)} <span className="muted">· consumer {consumer(c.consumer_id)}</span></dd>
@@ -269,30 +258,37 @@ function CallDrawer({ id, route, consumer, onClose }: { id: string; route: (id: 
             <dd className="mono break">{c.id}</dd>
           </dl>
 
-          <button onClick={() => copy('curl', toCurl(c))}>{copied === 'curl' ? 'Copied cURL' : 'Copy as cURL'}</button>
+          <CopyButton text={toCurl(c)} label="Copy as cURL" showLabel />
 
           <div className="tabs" role="tablist">
             <button role="tab" aria-selected={tab === 'request'} className={tab === 'request' ? 'on' : ''} onClick={() => setTab('request')}>Request</button>
             <button role="tab" aria-selected={tab === 'response'} className={tab === 'response' ? 'on' : ''} onClick={() => setTab('response')}>Response</button>
           </div>
           {tab === 'request' ? (
-            <>
-              <h3>Headers</h3>
-              <Headers headers={c.request_headers} />
-              <h3>Body</h3>
-              <BodyView body={c.request_body} size={c.request_size} />
-            </>
+            <Side name="request" headers={c.request_headers} body={c.request_body} size={c.request_size} />
           ) : (
-            <>
-              <h3>Headers</h3>
-              <Headers headers={c.response_headers} />
-              <h3>Body</h3>
-              <BodyView body={c.response_body} size={c.response_size} />
-            </>
+            <Side name="response" headers={c.response_headers} body={c.response_body} size={c.response_size} />
           )}
         </div>
       )}
     </Drawer>
+  )
+}
+
+function Side({ name, headers, body, size }: { name: string; headers: [string, string][] | null; body: Body | null; size: number | null }) {
+  return (
+    <>
+      <div className="section-head">
+        <h3>Headers</h3>
+        {!!headers?.length && <CopyButton text={JSON.stringify(headersToObject(headers), null, 2)} label={`Copy ${name} headers as JSON`} showLabel="Copy as JSON" />}
+      </div>
+      <Headers headers={headers} />
+      <div className="section-head">
+        <h3>Body</h3>
+        {body && <CopyButton text={body.content} label={`Copy ${name} body`} showLabel={body.encoding === 'base64' ? 'Copy base64' : 'Copy'} />}
+      </div>
+      <BodyView body={body} size={size} />
+    </>
   )
 }
 

@@ -112,6 +112,16 @@ export function splitUrl(url: string) {
   }
 }
 
+/** [[name, value], ...] → {name: value}; a repeated header (Set-Cookie) becomes an array. */
+export function headersToObject(headers: [string, string][]) {
+  const out: Record<string, string | string[]> = {}
+  for (const [k, v] of headers) {
+    const prev = out[k]
+    out[k] = prev === undefined ? v : Array.isArray(prev) ? [...prev, v] : [prev, v]
+  }
+  return out
+}
+
 const shellQuote = (s: string) => `'${s.replaceAll("'", "'\\''")}'`
 const SKIP_IN_CURL = new Set(['host', 'content-length', 'connection', 'x-relay-key', 'accept-encoding'])
 

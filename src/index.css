@@ -279,6 +279,18 @@ table.kv td.masked { color: var(--relay); font-family: var(--sans); font-style: 
 
 pre { background: var(--sunk); border: 1px solid var(--rule); border-radius: 8px; padding: 12px; margin: 0; overflow: auto; max-height: 420px; white-space: pre-wrap; word-break: break-all; }
 
+/* copy buttons */
+
+button.copy { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; border-color: transparent; background: transparent; color: var(--muted); vertical-align: middle; }
+button.copy:hover:not(:disabled) { color: var(--steel); border-color: var(--rule); background: var(--panel); }
+button.copy.with-label { padding: 5px 10px; border-color: var(--rule); background: var(--panel); color: var(--ink); }
+button.copy.done { color: var(--ok); }
+button.copy.failed { color: var(--fault); }
+button.copy span { font-size: 12.5px; }
+.facts dd button.copy { margin-left: 6px; }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 20px 0 8px; }
+.section-head h3 { margin: 0; }
+
 /* setup pages */
 
 .card { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 18px; margin: 0 0 16px; }
